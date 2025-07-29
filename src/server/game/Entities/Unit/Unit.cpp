@@ -93,6 +93,19 @@
 #include "TSBossAI.h"
 // @tswow-end
 
+#ifndef ASSERT_WITH_TRACE
+#include <boost/stacktrace.hpp>
+#include <iostream>
+#include <cstdlib>
+
+#define ASSERT_WITH_TRACE(expr) \
+    if (!(expr)) { \
+        std::cerr << "Assertion failed: " #expr "\n"; \
+        std::cerr << boost::stacktrace::stacktrace(); \
+        std::abort(); \
+    }
+#endif
+
 float baseMoveSpeed[MAX_MOVE_TYPE] =
 {
     2.5f,                  // MOVE_WALK
@@ -10249,6 +10262,7 @@ bool Unit::PopAI()
 
 void Unit::RefreshAI()
 {
+    ASSERT_WITH_TRACE(!m_aiLocked); // Debug crash
     ASSERT(!m_aiLocked, "Tried to change current AI during UpdateAI()");
     if (i_AIs.empty())
         i_AI = nullptr;
