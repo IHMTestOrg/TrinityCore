@@ -328,7 +328,7 @@ Unit::Unit(bool isWorldObject) :
     i_motionMaster(new MotionMaster(this)), m_regenTimer(0), m_vehicle(nullptr), m_vehicleKit(nullptr),
     m_unitTypeMask(UNIT_MASK_NONE), m_Diminishing(), m_combatManager(this), m_threatManager(this),
     m_aiLocked(false), m_comboTarget(nullptr), m_comboPoints(0), _spellHistory(new SpellHistory(this)),
-    m_lastTickTime(0), m_lastNotifiedTime(0)
+    m_lastTickTime(0), m_lastNotifiedTime(0), m_aiLockedAction(0), m_aiLockedPartitionId(0)
 {
     m_objectType |= TYPEMASK_UNIT;
     m_objectTypeId = TYPEID_UNIT;
@@ -10219,13 +10219,15 @@ void Unit::AIUpdateTick(uint32 diff)
         if ((c->GetCreatureTemplate()->flags_extra & 0x80000000) != 0 && c->IsInCombat() && !c->IsCharmed() && !c->isPossessedByPlayer() && !c->isPossessed()) // CREATURE_FLAG_EXTRA_TICK_AI
         {
             m_aiLocked = true;
+            m_aiLockedAction = 1;
+            m_aiLockedPartitionId = GetMap()->GetPartitionId();
             {
                 ZoneScopedNC("TSOnCombatTick", MAP_UPDATE_COLOR);
 
                 FIRE_ID(c->GetCreatureTemplate()->events.id,Creature,OnCombatTick,TSCreature(c),diff);
             }
-            
             m_aiLocked = false;
+            m_aiLockedAction = 0;
         }
     }
     // @tswow-end
@@ -10233,8 +10235,11 @@ void Unit::AIUpdateTick(uint32 diff)
     if (UnitAI* ai = GetAI())
     {
         m_aiLocked = true;
+        m_aiLockedAction = 2;
+        m_aiLockedPartitionId = GetMap()->GetPartitionId();
         ai->UpdateAI(diff);
         m_aiLocked = false;
+        m_aiLockedAction = 0;
     }
 }
 
@@ -10262,6 +10267,7 @@ bool Unit::PopAI()
 
 void Unit::RefreshAI()
 {
+    TC_LOG_DEBUG("ailock", "Refreshing AI lock partitionId {}, current {} action {}", m_aiLockedPartitionId, GetMap()->GetPartitionId(), m_aiLockedAction);
     ASSERT_WITH_TRACE(!m_aiLocked); // Debug crash
     ASSERT(!m_aiLocked, "Tried to change current AI during UpdateAI()");
     if (i_AIs.empty())
