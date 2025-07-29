@@ -454,7 +454,6 @@ Unit::~Unit()
 
 void Unit::Update(uint32 p_time)
 {
-    ZoneScopedN("Unit::Update")
     m_lastTickTime = GameTime::GetGameTimeMS();
 
     // @tswow-begin
