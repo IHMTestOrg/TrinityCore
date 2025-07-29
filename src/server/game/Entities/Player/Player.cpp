@@ -1427,7 +1427,7 @@ void Player::Update(uint32 p_time)
     float dz = m_lastNotifiedPosition.GetPositionZ() - GetPositionZ();
     float distsq = dx * dx + dy * dy + dz * dz;
     if (distsq < 64 && timeSinceLastNotify < 3000)
-        return false;
+        return;
 
     // Get the time offset for the notify period and a guid offset
     // to distribute notify times.
