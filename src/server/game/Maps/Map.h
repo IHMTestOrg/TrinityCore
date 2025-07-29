@@ -539,26 +539,18 @@ class TC_GAME_API Map : public GridRefManager<NGridType>
                 m_activeNonPlayers.erase(obj);
         }
 
-        // must called with AddToWorld/AddToPartition
         void AddToWaypointCreatures(Creature* creature)
         {
-            m_waypointCreatures.insert(creature);
+            if (m_updatingWaypointCreatures)
+                m_waypointCreaturesToAdd.push_back(creature);
+            else
+                m_waypointCreatures.insert(creature);
         }
 
-        // must called with RemoveFromWorld/RemoveFromPartition
+        // Must not be called during update (usually from RemoveFromMap/Partition)
         void RemoveFromWaypointCreatures(Creature* creature)
         {
-            if (m_waypointCreaturesIter != m_waypointCreatures.end())
-            {
-                WaypointCreatures::iterator itr = m_waypointCreatures.find(creature);
-                if (itr == m_waypointCreatures.end())
-                    return;
-                if (itr == m_waypointCreaturesIter)
-                    ++m_waypointCreaturesIter;
-                m_waypointCreatures.erase(itr);
-            }
-            else
-                m_waypointCreatures.erase(creature);
+            m_waypointCreatures.erase(creature);
         }
 
         template<class T> void SwitchGridContainers(T* obj, bool on);
@@ -782,9 +774,9 @@ class TC_GAME_API Map : public GridRefManager<NGridType>
         ActiveNonPlayers m_activeNonPlayers;
         ActiveNonPlayers::iterator m_activeNonPlayersIter;
 
-        typedef std::set<Creature*> WaypointCreatures;
-        WaypointCreatures m_waypointCreatures;
-        WaypointCreatures::iterator m_waypointCreaturesIter;
+        std::set<Creature*> m_waypointCreatures;
+        std::vector<Creature*> m_waypointCreaturesToAdd;
+        bool m_updatingWaypointCreatures;
 
         // Objects that must update even in inactive grids without activating them
         typedef std::set<Transport*> TransportsContainer;

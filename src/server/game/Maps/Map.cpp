@@ -248,8 +248,9 @@ Map::Map(uint32 id, uint32 instanceOrPartitionId):
 i_mapEntry(sMapStore.LookupEntry(id)),
 m_unloadTimer(0), m_VisibleDistance(DEFAULT_VISIBILITY_DISTANCE),
 m_VisibilityNotifyPeriod(DEFAULT_VISIBILITY_NOTIFY_PERIOD),
-m_activeNonPlayersIter(m_activeNonPlayers.end()), m_waypointCreaturesIter(m_waypointCreatures.end()), _transportsUpdateIter(_transports.end()),
-i_scriptLock(false), _respawnTimes(std::make_unique<RespawnListContainer>())
+m_activeNonPlayersIter(m_activeNonPlayers.end()), _transportsUpdateIter(_transports.end()),
+m_updatingWaypointCreatures(false), i_scriptLock(false),
+_respawnTimes(std::make_unique<RespawnListContainer>())
 {
     for (unsigned int idx=0; idx < MAX_NUMBER_OF_GRIDS; ++idx)
     {
@@ -934,14 +935,12 @@ void Map::Update(uint32 t_diff)
         }
     }
 
-    // TODO make this permanent
     if (sWorld->getBoolConfig(CONFIG_ALWAYS_UPDATE_WAYPOINT_CREATURES))
     {
         ZoneScopedN("Map::Update::WaypointCreatures")
 
-        // Copy since formation leadership change can result in AddToWaypointCreatures
-        std::vector<Creature*> waypointCreatureCopy(m_waypointCreatures.begin(), m_waypointCreatures.end());
-        for (auto creature : waypointCreatureCopy)
+        m_updatingWaypointCreatures = true;
+        for (auto creature : m_waypointCreatures)
         {
             if (!creature || !creature->IsInWorld() || !creature->IsPositionValid())
                 continue;
@@ -985,6 +984,15 @@ void Map::Update(uint32 t_diff)
                 }
             }
         }
+        m_updatingWaypointCreatures = false;
+    }
+
+    {
+        ZoneScopedN("Map::Update::AddWaypointCreatures")
+
+        for (auto creature : m_waypointCreaturesToAdd)
+            m_waypointCreatures.insert(creature);
+        m_waypointCreaturesToAdd.clear();
     }
 
     {
