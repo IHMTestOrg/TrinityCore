@@ -599,7 +599,6 @@ bool Map::AddToMap(T* obj)
     /// @todo Needs clean up. An object should not be added to map twice.
     if (obj->IsInWorld())
     {
-        TC_LOG_ERROR("maps", "Map::AddToMap called on Object that is already in world, map {}, obj {}", GetId(), obj->GetDebugInfo());
         ASSERT(obj->IsInGrid());
         obj->UpdateObjectVisibility(true);
         return true;
