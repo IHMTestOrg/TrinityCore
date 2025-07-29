@@ -285,24 +285,6 @@ i_scriptLock(false), _respawnTimes(std::make_unique<RespawnListContainer>())
     MMAP::MMapFactory::createOrGetMMapManager()->loadMapInstance(sWorld->GetDataPath(), GetId(), instanceOrPartitionId);
 }
 
-float Map::GetDiffScaleFactor() const
-{
-    float baseLineDiff = 150.0f; // A normal diff for an active server
-    return std::min(std::max(sWorldUpdateTime.GetLastUpdateTime() / baseLineDiff, 1.0f), 6.0f); // Diff scale 1x->6x
-}
-
-float Map::GetVisibilityRange() const
-{
-    // Scale range from full down to half based on scaleFactor (1x->6x becomes 1.0->0.5)
-    float rangeScale = 1.0f - ((GetDiffScaleFactor() - 1.0f) / 10.0f);
-    return m_VisibleDistance * rangeScale;
-}
-
-float Map::GetVisibilityNotifyPeriod() const
-{
-    return m_VisibilityNotifyPeriod * GetDiffScaleFactor();
-}
-
 void Map::InitVisibilityDistance()
 {
     //init visibility for continents
@@ -958,13 +940,10 @@ void Map::Update(uint32 t_diff)
     {
         ZoneScopedN("Map::Update::WaypointCreatures")
 
-        // waypoint creatures, increasing iterator in the loop in case of object removal
-        // TODO should objects be removed during update? I thought they get put in move list
-        for (m_waypointCreaturesIter = m_waypointCreatures.begin(); m_waypointCreaturesIter != m_waypointCreatures.end();)
+        // Copy since formation leadership change can result in AddToWaypointCreatures
+        std::vector<Creature*> waypointCreatureCopy(m_waypointCreatures.begin(), m_waypointCreatures.end());
+        for (auto creature : waypointCreatureCopy)
         {
-            Creature* creature = *m_waypointCreaturesIter;
-            ++m_waypointCreaturesIter;
-
             if (!creature || !creature->IsInWorld() || !creature->IsPositionValid())
                 continue;
 

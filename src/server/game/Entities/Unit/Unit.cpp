@@ -314,7 +314,8 @@ Unit::Unit(bool isWorldObject) :
     m_removedAurasCount(0), m_charmer(nullptr), m_charmed(nullptr),
     i_motionMaster(new MotionMaster(this)), m_regenTimer(0), m_vehicle(nullptr), m_vehicleKit(nullptr),
     m_unitTypeMask(UNIT_MASK_NONE), m_Diminishing(), m_combatManager(this), m_threatManager(this),
-    m_aiLocked(false), m_comboTarget(nullptr), m_comboPoints(0), _spellHistory(new SpellHistory(this))
+    m_aiLocked(false), m_comboTarget(nullptr), m_comboPoints(0), _spellHistory(new SpellHistory(this)),
+    m_lastTickTime(0), m_lastNotifiedTime(0)
 {
     m_objectType |= TYPEMASK_UNIT;
     m_objectTypeId = TYPEID_UNIT;
@@ -453,8 +454,10 @@ Unit::~Unit()
 
 void Unit::Update(uint32 p_time)
 {
-    // @tswow-begin
     ZoneScopedN("Unit::Update")
+    m_lastTickTime = GameTime::GetGameTimeMS();
+
+    // @tswow-begin
     m_tsWorldEntity.tick(TSWorldObject(this));
     m_tsCollisions.Tick(TSWorldObject(this));
     // @tswow-end
@@ -10299,7 +10302,8 @@ void Unit::AddToWorld()
     WorldObject::AddToWorld();
     i_motionMaster->AddToWorld();
 
-    _lastCheckedPartitionPosition = GetPosition();
+    m_lastNotifiedPosition = GetPosition();
+    m_lastCheckedPartitionPosition = GetPosition();
 }
 
 void Unit::RemoveFromWorld()
@@ -10359,7 +10363,8 @@ void Unit::AddToPartition()
     WorldObject::AddToPartition();
     //i_motionMaster->AddToWorld();
 
-    _lastCheckedPartitionPosition = GetPosition();
+    m_lastNotifiedPosition = GetPosition();
+    m_lastCheckedPartitionPosition = GetPosition();
 }
 
 void Unit::RemoveFromPartition()
@@ -10448,10 +10453,10 @@ bool Unit::ShouldRelocateUpdateMapPartition()
         return false;
 
     // Partition calculation is expensive, so only check again if we have moved a consequential amount
-    if (GetPosition().GetExactDist(_lastCheckedPartitionPosition) < 0.25f)
+    if (GetPosition().GetExactDist(m_lastCheckedPartitionPosition) < 0.25f)
         return false;
 
-    _lastCheckedPartitionPosition = GetPosition();
+    m_lastCheckedPartitionPosition = GetPosition();
     return sMapMgr->CalculatePartitionId(GetMap()->GetId(), GetPosition()) != GetMap()->GetPartitionId();
 }
 

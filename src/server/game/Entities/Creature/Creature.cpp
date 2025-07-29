@@ -878,6 +878,11 @@ void Creature::SetPhaseMask(uint32 newPhaseMask, bool update, uint64 newPhaseId)
 
 void Creature::Update(uint32 diff)
 {
+    // Guard against double ticks, formations can leadership exchange can result in this
+    uint32 tickTime = GameTime::GetGameTimeMS();
+    if (tickTime == m_lastTickTime)
+        return;
+
     if (m_outfit && !_changesMask.GetBit(UNIT_FIELD_DISPLAYID) && Unit::GetDisplayId() == CreatureOutfit::invisible_model)
     {
         // has outfit, displayid is invisible and displayid update already sent to clients
@@ -1107,12 +1112,23 @@ void Creature::Update(uint32 diff)
             break;
     }
 
-    // For now, do this at the end of the update
-    uint32 scaledPeriod = GetMap()->GetVisibilityNotifyPeriod();
-    uint32 currentTime = GameTime::GetGameTimeMS();
-    uint32 currentOffset = currentTime % scaledPeriod;
-    uint32 lastOffset = (currentTime - diff) % scaledPeriod;
-    uint32 guidOffset = GetGUID().GetCounter() % scaledPeriod;
+    uint32 timeSinceLastNotify = m_lastTickTime - m_lastNotifiedTime;
+    if (timeSinceLastNotify < 1000)
+        return;
+
+    float dx = m_lastNotifiedPosition.GetPositionX() - GetPositionX();
+    float dy = m_lastNotifiedPosition.GetPositionY() - GetPositionY();
+    float dz = m_lastNotifiedPosition.GetPositionZ() - GetPositionZ();
+    float distsq = dx * dx + dy * dy + dz * dz;
+    if (distsq < 64 && timeSinceLastNotify < 3000)
+        return false;
+    
+    // Get the time offset for the notify period and a guid offset
+    // to distribute notify times.
+    uint32 period = GetMap()->GetVisibilityNotifyPeriod();
+    uint32 currentOffset = m_lastTickTime % period;
+    uint32 lastOffset = (m_lastTickTime - diff) % period;
+    uint32 guidOffset = GetGUID().GetCounter() % period;
     // Check if guidOffset was crossed during this frame
     bool crossed = (lastOffset < currentOffset) ?
         (guidOffset > lastOffset && guidOffset <= currentOffset) :
@@ -1121,9 +1137,13 @@ void Creature::Update(uint32 diff)
     {
         if (isNeedNotify(NOTIFY_VISIBILITY_CHANGED))
         {
+            ZoneScopedN("CreatureRelocationNotifier");
             CreatureRelocationNotifier relocate(*this);
             Cell::VisitAllObjects(this, relocate, GetMap()->GetVisibilityRange(), false);
         }
+
+        m_lastNotifiedTime = m_lastTickTime;
+        m_lastNotifiedPosition = GetPosition();
 
         ResetAllNotifies();
     }

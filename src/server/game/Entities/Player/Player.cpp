@@ -1415,14 +1415,28 @@ void Player::Update(uint32 p_time)
     }
 
     if (IsHasDelayedTeleport())
+    {
         TeleportTo(m_teleport_dest, m_teleport_options);
+        return;
+    }
 
-    // For now, do this at the end of the update 
-    uint32 scaledPeriod = GetMap()->GetVisibilityNotifyPeriod();
-    uint32 currentTime = GameTime::GetGameTimeMS();
-    uint32 currentOffset = currentTime % scaledPeriod;
-    uint32 lastOffset = (currentTime - p_time) % scaledPeriod;
-    uint32 guidOffset = GetGUID().GetCounter() % scaledPeriod;
+    uint32 timeSinceLastNotify = m_lastTickTime - m_lastNotifiedTime;
+    if (timeSinceLastNotify < 1000)
+        return;
+
+    float dx = m_lastNotifiedPosition.GetPositionX() - GetPositionX();
+    float dy = m_lastNotifiedPosition.GetPositionY() - GetPositionY();
+    float dz = m_lastNotifiedPosition.GetPositionZ() - GetPositionZ();
+    float distsq = dx * dx + dy * dy + dz * dz;
+    if (distsq < 64 && timeSinceLastNotify < 3000)
+        return false;
+
+    // Get the time offset for the notify period and a guid offset
+    // to distribute notify times.
+    uint32 period = GetMap()->GetVisibilityNotifyPeriod();
+    uint32 currentOffset = m_lastTickTime % period;
+    uint32 lastOffset = (m_lastTickTime - p_time) % period;
+    uint32 guidOffset = GetGUID().GetCounter() % period;
     // Check if guidOffset was crossed during this frame
     bool crossed = (lastOffset < currentOffset) ?
         (guidOffset > lastOffset && guidOffset <= currentOffset) :
@@ -1432,7 +1446,7 @@ void Player::Update(uint32 p_time)
         WorldObject const* viewPoint = m_seer;
         if (viewPoint->isNeedNotify(NOTIFY_VISIBILITY_CHANGED) && (this == viewPoint || viewPoint->IsPositionValid()))
         {
-            ZoneScopedN("Player::Update::RelocationNotifier");
+            ZoneScopedN("PlayerRelocationNotifier");
             OnSlowerThan(5,
                 [&]() {
                     PlayerRelocationNotifier relocate(*this);
@@ -1447,6 +1461,9 @@ void Player::Update(uint32 p_time)
                         });
                 });
         }
+
+        m_lastNotifiedTime = m_lastTickTime;
+        m_lastNotifiedPosition = GetPosition();
 
         ResetAllNotifies();
     }
