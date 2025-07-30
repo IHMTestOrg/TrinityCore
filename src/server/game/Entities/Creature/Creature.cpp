@@ -1115,17 +1115,17 @@ void Creature::Update(uint32 diff)
     if (!GetMap()->HavePlayers())
         return;
 
-    uint32 timeSinceLastNotify = m_lastTickTime - m_lastNotifiedTime;
-    uint32 period = GetMap()->GetVisibilityNotifyPeriod();
-    uint32 maxPeriod = period * 2;
-    if (timeSinceLastNotify < period)
-        return;
-
     float dx = m_lastNotifiedPosition.GetPositionX() - GetPositionX();
     float dy = m_lastNotifiedPosition.GetPositionY() - GetPositionY();
     float dz = m_lastNotifiedPosition.GetPositionZ() - GetPositionZ();
     float distsq = dx * dx + dy * dy + dz * dz;
-    if (distsq < 64)
+    if (!isNeedNotify(NOTIFY_VISIBILITY_CHANGED) && distsq < 64)
+        return;
+
+    uint32 timeSinceLastNotify = m_lastTickTime - m_lastNotifiedTime;
+    uint32 period = GetMap()->GetVisibilityNotifyPeriod();
+    uint32 maxPeriod = period * 2;
+    if (!isNeedNotify(NOTIFY_VISIBILITY_CHANGED) && timeSinceLastNotify < period)
         return;
 
     // Get the time offset for the notify period and a guid offset
@@ -1139,18 +1139,19 @@ void Creature::Update(uint32 diff)
         (guidOffset > lastOffset || guidOffset <= currentOffset);
     if (crossed || timeSinceLastNotify > maxPeriod)
     {
-        if (isNeedNotify(NOTIFY_VISIBILITY_CHANGED))
-        {
-            ZoneScopedN("CreatureRelocationNotifier");
-            CreatureRelocationNotifier relocate(*this);
-            Cell::VisitAllObjects(this, relocate, GetMap()->GetVisibilityRange(), false);
-        }
-
-        m_lastNotifiedTime = m_lastTickTime;
-        m_lastNotifiedPosition = GetPosition();
-
-        ResetAllNotifies();
+        GetMap()->AddToUpdateVisibilityCreatures(this);
     }
+}
+
+void Player::ProcessVisibilityNotifier()
+{
+    ZoneScopedN("CreatureRelocationNotifier");
+
+    CreatureRelocationNotifier relocate(*this);
+    Cell::VisitAllObjects(this, relocate, GetMap()->GetVisibilityRange(), false);
+
+    m_lastNotifiedTime = m_lastTickTime;
+    m_lastNotifiedPosition = GetPosition();
 }
 
 void Creature::RegenerateAll(uint32 diff)
