@@ -2083,8 +2083,6 @@ class TC_GAME_API Unit : public WorldObject
         UnitAIStack i_AIs;
         std::shared_ptr<UnitAI> i_AI;
         bool m_aiLocked;
-        uint32 m_aiLockedAction;
-        uint32 m_aiLockedPartitionId;
 
         std::unordered_set<AbstractFollower*> m_followingMe;
 

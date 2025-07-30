@@ -315,7 +315,7 @@ Unit::Unit(bool isWorldObject) :
     i_motionMaster(new MotionMaster(this)), m_regenTimer(0), m_vehicle(nullptr), m_vehicleKit(nullptr),
     m_unitTypeMask(UNIT_MASK_NONE), m_Diminishing(), m_combatManager(this), m_threatManager(this),
     m_aiLocked(false), m_comboTarget(nullptr), m_comboPoints(0), _spellHistory(new SpellHistory(this)),
-    m_lastTickTime(0), m_lastNotifiedTime(0), m_aiLockedAction(0), m_aiLockedPartitionId(0)
+    m_lastTickTime(0), m_lastNotifiedTime(0)
 {
     m_objectType |= TYPEMASK_UNIT;
     m_objectTypeId = TYPEID_UNIT;
