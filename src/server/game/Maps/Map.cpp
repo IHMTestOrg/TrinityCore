@@ -1172,7 +1172,7 @@ void Map::RemoveFromMap(T *obj, bool remove)
     if (obj->isActiveObject())
         RemoveFromActive(obj);
 
-    if (obj->IsCreature() && obj->ToCreature()->GetWaypointPath() != 0)
+    if (obj->IsCreature())
         RemoveFromWaypointCreatures(obj->ToCreature());
 
     if (!inWorld) // if was in world, RemoveFromWorld() called DestroyForNearbyPlayers()
