@@ -1112,6 +1112,9 @@ void Creature::Update(uint32 diff)
             break;
     }
 
+    if (!GetMap()->HavePlayers())
+        return;
+
     uint32 timeSinceLastNotify = m_lastTickTime - m_lastNotifiedTime;
     if (timeSinceLastNotify < 1000)
         return;
