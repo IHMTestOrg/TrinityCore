@@ -833,7 +833,7 @@ void World::LoadConfigSettings(bool reload)
         m_bool_configs[CONFIG_ALWAYS_UPDATE_WAYPOINT_CREATURES] = false;
     }
     m_bool_configs[CONFIG_HIDE_GAMEOBJECT_SPARKLE] = sConfigMgr->GetBoolDefault("HideGameObjectSparkle", false);
-    m_int_configs[CONFIG_MAX_RESPAWN_COUNT_ON_UPDATE] = sConfigMgr->GetIntDefault("MaxRespawnCountOnUpdate", 0);
+    // m_int_configs[CONFIG_MAX_RESPAWN_COUNT_ON_UPDATE] = sConfigMgr->GetIntDefault("MaxRespawnCountOnUpdate", 0);
     m_int_configs[CONFIG_MUTE_DEFAULT_GUILD_BROADCASTS] = sConfigMgr->GetIntDefault("MuteDefaultGuildBroadcasts", 0);
     /** @epoch-end */
 
