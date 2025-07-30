@@ -1419,19 +1419,13 @@ void Player::Update(uint32 p_time)
     }
 
     uint32 timeSinceLastNotify = m_lastTickTime - m_lastNotifiedTime;
-    if (timeSinceLastNotify < 1000)
-        return;
-
-    float dx = m_lastNotifiedPosition.GetPositionX() - GetPositionX();
-    float dy = m_lastNotifiedPosition.GetPositionY() - GetPositionY();
-    float dz = m_lastNotifiedPosition.GetPositionZ() - GetPositionZ();
-    float distsq = dx * dx + dy * dy + dz * dz;
-    if (distsq < 64 || timeSinceLastNotify < 3000)
+    uint32 period = GetMap()->GetVisibilityNotifyPeriod();
+    uint32 maxPeriod = period * 2;
+    if (timeSinceLastNotify < period)
         return;
 
     // Get the time offset for the notify period and a guid offset
     // to distribute notify times.
-    uint32 period = GetMap()->GetVisibilityNotifyPeriod();
     uint32 currentOffset = m_lastTickTime % period;
     uint32 lastOffset = (m_lastTickTime - p_time) % period;
     uint32 guidOffset = GetGUID().GetCounter() % period;
@@ -1439,7 +1433,7 @@ void Player::Update(uint32 p_time)
     bool crossed = (lastOffset < currentOffset) ?
         (guidOffset > lastOffset && guidOffset <= currentOffset) :
         (guidOffset > lastOffset || guidOffset <= currentOffset);
-    if (crossed)
+    if (crossed || timeSinceLastNotify > maxPeriod)
     {
         WorldObject const* viewPoint = m_seer;
         if (viewPoint->isNeedNotify(NOTIFY_VISIBILITY_CHANGED) && (this == viewPoint || viewPoint->IsPositionValid()))
