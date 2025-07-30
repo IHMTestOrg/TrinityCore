@@ -1084,22 +1084,6 @@ void Map::Update(uint32 t_diff)
         _relocatedDynamicObjects.clear();
     }
 
-    {
-        ZoneScopedN("PlayerRelocationNofiers")
-
-        for (auto player : _playerNotifiers)
-            player->ProcessRelocationNotifier();
-        _playerNotifiers.clear();
-    }
-
-    {
-        ZoneScopedN("CreatureRelocationNofiers")
-
-        for (auto creature : _creatureNotifiers)
-            creature->ProcessRelocationNotifier();
-        _creatureNotifiers.clear();
-    }
-
     SendObjectUpdates();
 
     ///- Process necessary scripts
