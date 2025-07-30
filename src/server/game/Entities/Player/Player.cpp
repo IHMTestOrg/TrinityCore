@@ -1448,7 +1448,6 @@ void Player::ProcessVisibilityNotifier()
     ZoneScopedN("PlayerRelocationNotifier");
 
     PlayerRelocationNotifier relocate(*this);
-    WorldObject const* viewPoint = m_seer;
     Cell::VisitAllObjects(viewPoint, relocate, GetMap()->GetVisibilityRange(), false);
     relocate.SendToSelf();
 
