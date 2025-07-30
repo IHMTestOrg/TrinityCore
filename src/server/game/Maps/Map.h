@@ -565,12 +565,12 @@ class TC_GAME_API Map : public GridRefManager<NGridType>
 
         void AddToUpdateVisibilityCreatures(Creature* creature)
         {
-            _updateVisibilityPlayers.insert(creature);
+            _updateVisibilityCreatures.insert(creature);
         }
 
         void RemoveFromUpdateVisibilityCreatures(Creature* creature)
         {
-            _updateVisibilityPlayers.erase(creature);
+            _updateVisibilityCreatures.erase(creature);
         }
 
         template<class T> void SwitchGridContainers(T* obj, bool on);
