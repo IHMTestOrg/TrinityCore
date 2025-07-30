@@ -957,7 +957,6 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
         bool Create(ObjectGuid::LowType guidlow, CharacterCreateInfo* createInfo);
 
         void Update(uint32 time) override;
-        void ProcessRelocation(uint32 diff) override;
 
         static bool BuildEnumData(PreparedQueryResult result, WorldPacket* data);
 
