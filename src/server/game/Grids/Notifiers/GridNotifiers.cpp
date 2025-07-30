@@ -179,7 +179,7 @@ void PlayerRelocationNotifier::Visit(CreatureMapType &m)
 
         i_player.UpdateVisibilityOf(c, i_data, i_visibleNow);
 
-        if (relocated_for_ai && !c->isNeedNotify(NOTIFY_VISIBILITY_CHANGED))
+        if (relocated_for_ai)
             CreatureUnitRelocationWorker(c, &i_player);
     }
 }
@@ -189,10 +189,7 @@ void CreatureRelocationNotifier::Visit(PlayerMapType &m)
     for (PlayerMapType::iterator iter = m.begin(); iter != m.end(); ++iter)
     {
         Player* player = iter->GetSource();
-
-        if (!player->m_seer->isNeedNotify(NOTIFY_VISIBILITY_CHANGED))
-            player->UpdateVisibilityOf(&i_creature);
-
+        player->UpdateVisibilityOf(&i_creature);
         CreatureUnitRelocationWorker(&i_creature, player);
     }
 }
@@ -206,46 +203,7 @@ void CreatureRelocationNotifier::Visit(CreatureMapType &m)
     {
         Creature* c = iter->GetSource();
         CreatureUnitRelocationWorker(&i_creature, c);
-
-        if (!c->isNeedNotify(NOTIFY_VISIBILITY_CHANGED))
-            CreatureUnitRelocationWorker(c, &i_creature);
-    }
-}
-
-void DelayedUnitRelocation::Visit(CreatureMapType &m)
-{
-    for (CreatureMapType::iterator iter = m.begin(); iter != m.end(); ++iter)
-    {
-        Creature* unit = iter->GetSource();
-        if (!unit->isNeedNotify(NOTIFY_VISIBILITY_CHANGED))
-            continue;
-
-        CreatureRelocationNotifier relocate(*unit);
-
-        TypeContainerVisitor<CreatureRelocationNotifier, WorldTypeMapContainer > c2world_relocation(relocate);
-        TypeContainerVisitor<CreatureRelocationNotifier, GridTypeMapContainer >  c2grid_relocation(relocate);
-
-        cell.Visit(p, c2world_relocation, i_map, *unit, i_radius);
-        cell.Visit(p, c2grid_relocation, i_map, *unit, i_radius);
-    }
-}
-
-void DelayedUnitRelocation::Visit(PlayerMapType &m)
-{
-    for (PlayerMapType::iterator iter = m.begin(); iter != m.end(); ++iter)
-    {
-        Player* player = iter->GetSource();
-        WorldObject const* viewPoint = player->m_seer;
-
-        if (!viewPoint->isNeedNotify(NOTIFY_VISIBILITY_CHANGED))
-            continue;
-
-        if (player != viewPoint && !viewPoint->IsPositionValid())
-            continue;
-
-        PlayerRelocationNotifier relocate(*player);
-        Cell::VisitAllObjects(viewPoint, relocate, i_radius, false);
-        relocate.SendToSelf();
+        CreatureUnitRelocationWorker(c, &i_creature);
     }
 }
 
