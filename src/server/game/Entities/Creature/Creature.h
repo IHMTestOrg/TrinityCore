@@ -95,7 +95,9 @@ class TC_GAME_API Creature : public Unit, public GridObject<Creature>
 
         ObjectGuid::LowType GetSpawnId() const { return m_spawnId; }
 
-        void Update(uint32 time) override;                         // overwrited Unit::Update
+        void Update(uint32 time) override; // overwrited Unit::Update
+        void ProcessVisibilityNotifier() override;
+
         void GetRespawnPosition(float &x, float &y, float &z, float* ori = nullptr, float* dist = nullptr) const;
         bool IsSpawnedOnTransport() const { return m_creatureData && m_creatureData->mapId != GetMapId(); }
 

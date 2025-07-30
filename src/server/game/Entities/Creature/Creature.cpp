@@ -1143,7 +1143,7 @@ void Creature::Update(uint32 diff)
     }
 }
 
-void Player::ProcessVisibilityNotifier()
+void Creature::ProcessVisibilityNotifier()
 {
     ZoneScopedN("CreatureRelocationNotifier");
 
