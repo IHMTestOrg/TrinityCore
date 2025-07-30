@@ -93,19 +93,6 @@
 #include "TSBossAI.h"
 // @tswow-end
 
-#ifndef ASSERT_WITH_TRACE
-#include <boost/stacktrace.hpp>
-#include <iostream>
-#include <cstdlib>
-
-#define ASSERT_WITH_TRACE(expr) \
-    if (!(expr)) { \
-        std::cerr << "Assertion failed: " #expr "\n"; \
-        std::cerr << boost::stacktrace::stacktrace(); \
-        std::abort(); \
-    }
-#endif
-
 float baseMoveSpeed[MAX_MOVE_TYPE] =
 {
     2.5f,                  // MOVE_WALK
@@ -10219,15 +10206,12 @@ void Unit::AIUpdateTick(uint32 diff)
         if ((c->GetCreatureTemplate()->flags_extra & 0x80000000) != 0 && c->IsInCombat() && !c->IsCharmed() && !c->isPossessedByPlayer() && !c->isPossessed()) // CREATURE_FLAG_EXTRA_TICK_AI
         {
             m_aiLocked = true;
-            m_aiLockedAction = 1;
-            m_aiLockedPartitionId = GetMap()->GetPartitionId();
             {
                 ZoneScopedNC("TSOnCombatTick", MAP_UPDATE_COLOR);
 
                 FIRE_ID(c->GetCreatureTemplate()->events.id,Creature,OnCombatTick,TSCreature(c),diff);
             }
             m_aiLocked = false;
-            m_aiLockedAction = 0;
         }
     }
     // @tswow-end
@@ -10235,11 +10219,8 @@ void Unit::AIUpdateTick(uint32 diff)
     if (UnitAI* ai = GetAI())
     {
         m_aiLocked = true;
-        m_aiLockedAction = 2;
-        m_aiLockedPartitionId = GetMap()->GetPartitionId();
         ai->UpdateAI(diff);
         m_aiLocked = false;
-        m_aiLockedAction = 0;
     }
 }
 
@@ -10267,8 +10248,6 @@ bool Unit::PopAI()
 
 void Unit::RefreshAI()
 {
-    TC_LOG_DEBUG("ailock", "Refreshing AI lock partitionId {}, current {} action {}", m_aiLockedPartitionId, GetMap()->GetPartitionId(), m_aiLockedAction);
-    ASSERT_WITH_TRACE(!m_aiLocked); // Debug crash
     ASSERT(!m_aiLocked, "Tried to change current AI during UpdateAI()");
     if (i_AIs.empty())
         i_AI = nullptr;
