@@ -36,10 +36,10 @@ TSMap TSMainThreadContext::GetMap(uint32_t mapId, uint32_t instanceId)
     return TSMap(sMapMgr->FindMap(mapId, instanceId));
 }
 
-TSMap TSMainThreadContext::GetContinent(uint32_t mapId)
-{
-    return TSMap(sMapMgr->FindContinent(mapId));
-}
+// TSMap TSMainThreadContext::GetContinent(uint32_t mapId)
+// {
+//     return TSMap(sMapMgr->FindContinent(mapId));
+// }
 
 void TSMainThreadContext::SendMail(uint8 senderType, uint64 from, uint64 to, std::string const& subject, std::string const& body, uint32 money, uint32 cod, uint32 delay, TSArray<TSItem> items)
 {
