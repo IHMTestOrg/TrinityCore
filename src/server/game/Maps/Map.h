@@ -405,6 +405,16 @@ class TC_GAME_API Map : public GridRefManager<NGridType>
         void GameObjectRelocation(GameObject* go, float x, float y, float z, float orientation);
         void DynamicObjectRelocation(DynamicObject* go, float x, float y, float z, float orientation);
 
+        void AddToPlayerNotifiers(Player* player)
+        {
+            _playerNotifiers.push_back(player);
+        }
+
+        void AddToCreatureNotifiers(Creature* creature)
+        {
+            _creatureNotifiers.push_back(creature);
+        }
+
         template<class T, class CONTAINER>
         void Visit(Cell const& cell, TypeContainerVisitor<T, CONTAINER>& visitor);
 
@@ -919,6 +929,8 @@ class TC_GAME_API Map : public GridRefManager<NGridType>
         std::unordered_set<Creature*> _relocatedCreatures;
         std::unordered_set<GameObject*> _relocatedGameObjects;
         std::unordered_set<DynamicObject*> _relocatedDynamicObjects;
+        std::list<Player*> _playerNotifiers;
+        std::list<Creature*> _creatureNotifiers;
         std::unordered_set<Player*> _updateMapPartitionPlayers;
         std::unordered_set<Creature*> _updateMapPartitionCreatures;
         MPSCQueue<FarSpellCallback> _farSpellCallbacks;
