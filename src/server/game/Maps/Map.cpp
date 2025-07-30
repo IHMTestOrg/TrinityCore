@@ -1088,7 +1088,7 @@ void Map::Update(uint32 t_diff)
         ZoneScopedN("PlayerRelocationNofiers")
 
         for (auto player : _playerNotifiers)
-            player->ProcessRelocationNotifier();
+            player->ProcessRelocationNotifier(t_diff);
         _playerNotifiers.clear();
     }
 
@@ -1096,7 +1096,7 @@ void Map::Update(uint32 t_diff)
         ZoneScopedN("CreatureRelocationNofiers")
 
         for (auto creature : _creatureNotifiers)
-            creature->ProcessRelocationNotifier();
+            creature->ProcessRelocationNotifier(t_diff);
         _creatureNotifiers.clear();
     }
 
