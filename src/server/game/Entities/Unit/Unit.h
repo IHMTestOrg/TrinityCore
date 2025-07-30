@@ -914,7 +914,6 @@ class TC_GAME_API Unit : public WorldObject
         void ClearDiminishings();
 
         virtual void Update(uint32 time) override;
-        virtual void ProcessVisibilityNotifier() { }
 
         void setAttackTimer(WeaponAttackType type, uint32 time) { m_attackTimer[type] = time; }
         void resetAttackTimer(WeaponAttackType type = BASE_ATTACK);
