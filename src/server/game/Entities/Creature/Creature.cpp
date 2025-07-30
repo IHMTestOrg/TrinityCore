@@ -1111,12 +1111,6 @@ void Creature::Update(uint32 diff)
         default:
             break;
     }
-}
-
-void Creature::ProcessRelocation(uint32 diff)
-{
-    if (!IsInWorld())
-        return;
 
     uint32 timeSinceLastNotify = m_lastTickTime - m_lastNotifiedTime;
     if (timeSinceLastNotify < 1000)
@@ -1126,23 +1120,20 @@ void Creature::ProcessRelocation(uint32 diff)
     float dy = m_lastNotifiedPosition.GetPositionY() - GetPositionY();
     float dz = m_lastNotifiedPosition.GetPositionZ() - GetPositionZ();
     float distsq = dx * dx + dy * dy + dz * dz;
-    if (distsq < 64 /*&& timeSinceLastNotify < GetMap()->GetVisibilityNotifyPeriod()*/) // Test weather creatures need periodic
+    if (distsq < 64 && timeSinceLastNotify < 3000)
         return;
     
     // Get the time offset for the notify period and a guid offset
-    // to distribute notify times, based on the period this will pick a slot
-    // within that spread and not notify until that time is reached
-    // TODO add configs for MinNotifyPeriod and MaxNotifyPeriod
-    uint32 minPeriod = GetMap()->GetVisibilityNotifyPeriod();
-    uint32 maxPeriod = minPeriod * 2;
-    uint32 currentOffset = m_lastTickTime % minPeriod;
-    uint32 lastOffset = (m_lastTickTime - diff) % minPeriod;
-    uint32 guidOffset = GetGUID().GetCounter() % minPeriod;
+    // to distribute notify times.
+    uint32 period = GetMap()->GetVisibilityNotifyPeriod();
+    uint32 currentOffset = m_lastTickTime % period;
+    uint32 lastOffset = (m_lastTickTime - diff) % period;
+    uint32 guidOffset = GetGUID().GetCounter() % period;
     // Check if guidOffset was crossed during this frame
     bool crossed = (lastOffset < currentOffset) ?
         (guidOffset > lastOffset && guidOffset <= currentOffset) :
         (guidOffset > lastOffset || guidOffset <= currentOffset);
-    if (crossed || timeSinceLastNotify > maxPeriod)
+    if (crossed)
     {
         if (isNeedNotify(NOTIFY_VISIBILITY_CHANGED))
         {
