@@ -1139,12 +1139,9 @@ void Creature::Update(uint32 diff)
         (guidOffset > lastOffset || guidOffset <= currentOffset);
     if (crossed || timeSinceLastNotify > maxPeriod)
     {
-        if (isNeedNotify(NOTIFY_VISIBILITY_CHANGED))
-        {
-            ZoneScopedN("CreatureRelocationNotifier");
-            CreatureRelocationNotifier relocate(*this);
-            Cell::VisitAllObjects(this, relocate, GetMap()->GetVisibilityRange(), false);
-        }
+        ZoneScopedN("CreatureRelocationNotifier");
+        CreatureRelocationNotifier relocate(*this);
+        Cell::VisitAllObjects(this, relocate, GetMap()->GetVisibilityRange(), false);
 
         m_lastNotifiedTime = m_lastTickTime;
         m_lastNotifiedPosition = GetPosition();
