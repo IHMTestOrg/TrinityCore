@@ -1012,7 +1012,7 @@ void Map::Update(uint32 t_diff)
 
     // We must delay grid relocation until after entities are updated to avoid updating multiple times (by moving to an unmarked cell)
     {
-        ZoneScopedN("CreaturesRelocations")
+        ZoneScopedN("Map::Update::GridRelocations::Creatures")
 
         for (Creature* creature : _relocatedCreatures)
         {
@@ -1028,7 +1028,7 @@ void Map::Update(uint32 t_diff)
                 AddToGrid(creature, new_cell);
             }
             creature->UpdatePositionData();
-            //creature->UpdateObjectVisibility(false);
+            creature->UpdateObjectVisibility(false);
 
             if (creature->ShouldRelocateUpdateMapPartition())
                 _updateMapPartitionCreatures.insert(creature);
@@ -1038,7 +1038,7 @@ void Map::Update(uint32 t_diff)
     }
 
     {
-        ZoneScopedN("GameObjectsRelocations")
+        ZoneScopedN("Map::Update::GridRelocations::GameObjects")
 
         for (GameObject* go : _relocatedGameObjects)
         {
@@ -1062,7 +1062,7 @@ void Map::Update(uint32 t_diff)
     }
 
     {
-        ZoneScopedN(":DynamicObjectsRelocations")
+        ZoneScopedN("Map::Update::GridRelocations::DynamicObjects")
 
         for (DynamicObject* dynObj : _relocatedDynamicObjects)
         {
@@ -1082,24 +1082,6 @@ void Map::Update(uint32 t_diff)
         }
 
         _relocatedDynamicObjects.clear();
-    }
-
-    {
-        ZoneScopedN("PlayerVisibilityNotifiers")
-
-        for (auto player : _updateVisibilityPlayers)
-            player->ProcessVisibilityNotifier();
-
-        _updateVisibilityPlayers.clear();
-    }
-
-    {
-        ZoneScopedN("CreatureVisibilityNotifiers")
-
-        for (auto creature : _updateVisibilityCreatures)
-            creature->ProcessVisibilityNotifier();
-
-        _updateVisibilityCreatures.clear();
     }
 
     SendObjectUpdates();
@@ -1169,8 +1151,6 @@ void Map::RemovePlayerFromMap(Player* player, bool remove)
     player->RemoveFromWorld();
     SendRemoveTransports(player);
 
-    RemoveFromUpdateVisibilityPlayers(player);
-
     // note: RemoveFromWorld does this for inWorld objects
     if (!inWorld) // if was in world, RemoveFromWorld() called DestroyForNearbyPlayers()
         player->DestroyForNearbyPlayers(); // previous player->UpdateObjectVisibility(true)
@@ -1198,15 +1178,13 @@ void Map::RemovePlayerFromPartition(Player* player)
 
     player->CombatStop();
 
-    bool const inWorld = player->IsInWorld();
+    //bool const inWorld = player->IsInWorld();
     player->RemoveFromPartition();
     SendRemoveTransports(player);
 
-    RemoveFromUpdateVisibilityPlayers(player);
-
     // note: RemoveFromWorld does this for inWorld objects
-    if (!inWorld) // if was in world, RemoveFromWorld() called DestroyForNearbyPlayers()
-        player->DestroyForNearbyPlayers(); // previous player->UpdateObjectVisibility(true)
+    //if (!inWorld) // if was in world, RemoveFromWorld() called DestroyForNearbyPlayers()
+    //    player->DestroyForNearbyPlayers(); // previous player->UpdateObjectVisibility(true)
 
     if (player->IsInGrid())
         player->RemoveFromGrid();
@@ -1224,10 +1202,7 @@ void Map::RemoveFromMap(T *obj, bool remove)
         RemoveFromActive(obj);
 
     if (obj->IsCreature())
-    {
         RemoveFromWaypointCreatures(obj->ToCreature());
-        RemoveFromUpdateVisibilityCreatures(obj->ToCreature()); // Should never be the case, but why not
-    }
 
     // note: RemoveFromWorld does this for inWorld objects
     if (!inWorld) // if was in world, RemoveFromWorld() called DestroyForNearbyPlayers()
@@ -1290,10 +1265,7 @@ void Map::RemoveFromPartition(T *obj)
         RemoveFromActive(obj);
 
     if (obj->IsCreature())
-    {
         RemoveFromWaypointCreatures(obj->ToCreature());
-        RemoveFromUpdateVisibilityCreatures(obj->ToCreature()); // Should never be the case, but why not
-    }
 
     // note: RemoveFromWorld does this for inWorld objects
     if (!inWorld) // if was in world, RemoveFromWorld() called DestroyForNearbyPlayers()
@@ -1325,7 +1297,7 @@ void Map::PlayerRelocation(Player* player, float x, float y, float z, float orie
     }
 
     player->UpdatePositionData();
-    //player->UpdateObjectVisibility(false);
+    player->UpdateObjectVisibility(false);
 
     if (player->ShouldRelocateUpdateMapPartition())
         _updateMapPartitionPlayers.insert(player);
@@ -1346,7 +1318,7 @@ void Map::CreatureRelocation(Creature* creature, float x, float y, float z, floa
     else
     {
         creature->UpdatePositionData();
-        //creature->UpdateObjectVisibility(false);
+        creature->UpdateObjectVisibility(false);
 
         if (creature->ShouldRelocateUpdateMapPartition())
             _updateMapPartitionCreatures.insert(creature);

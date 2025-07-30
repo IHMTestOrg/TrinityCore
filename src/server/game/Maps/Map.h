@@ -553,26 +553,6 @@ class TC_GAME_API Map : public GridRefManager<NGridType>
             m_waypointCreatures.erase(creature);
         }
 
-        void AddToUpdateVisibilityPlayers(Player* player)
-        {
-            _updateVisibilityPlayers.insert(player);
-        }
-
-        void RemoveFromUpdateVisibilityPlayers(Player* player)
-        {
-            _updateVisibilityPlayers.erase(player);
-        }
-
-        void AddToUpdateVisibilityCreatures(Creature* creature)
-        {
-            _updateVisibilityPlayers.insert(creature);
-        }
-
-        void RemoveFromUpdateVisibilityCreatures(Creature* creature)
-        {
-            _updateVisibilityPlayers.erase(creature);
-        }
-
         template<class T> void SwitchGridContainers(T* obj, bool on);
         std::unordered_map<ObjectGuid::LowType /*leaderSpawnId*/, CreatureGroup*> CreatureGroupHolder;
 
@@ -939,8 +919,6 @@ class TC_GAME_API Map : public GridRefManager<NGridType>
         std::unordered_set<Creature*> _relocatedCreatures;
         std::unordered_set<GameObject*> _relocatedGameObjects;
         std::unordered_set<DynamicObject*> _relocatedDynamicObjects;
-        std::unordered_set<Player*> _updateVisibilityPlayers;
-        std::unordered_set<Creature*> _updateVisibilityCreatures;
         std::unordered_set<Player*> _updateMapPartitionPlayers;
         std::unordered_set<Creature*> _updateMapPartitionCreatures;
         MPSCQueue<FarSpellCallback> _farSpellCallbacks;

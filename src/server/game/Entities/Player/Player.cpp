@@ -1421,7 +1421,7 @@ void Player::Update(uint32 p_time)
     uint32 timeSinceLastNotify = m_lastTickTime - m_lastNotifiedTime;
     uint32 period = GetMap()->GetVisibilityNotifyPeriod();
     uint32 maxPeriod = period * 2;
-    if (!isNeedNotify(NOTIFY_VISIBILITY_CHANGED) && timeSinceLastNotify < period)
+    if (timeSinceLastNotify < period)
         return;
 
     // Get the time offset for the notify period and a guid offset
@@ -1436,23 +1436,29 @@ void Player::Update(uint32 p_time)
     if (crossed || timeSinceLastNotify > maxPeriod)
     {
         WorldObject const* viewPoint = m_seer;
-        if (this == viewPoint || viewPoint->IsPositionValid())
+        if (viewPoint->isNeedNotify(NOTIFY_VISIBILITY_CHANGED) && (this == viewPoint || viewPoint->IsPositionValid()))
         {
-            GetMap()->AddToUpdateVisibilityPlayers(this);
+            ZoneScopedN("PlayerRelocationNotifier");
+            OnSlowerThan(5,
+                [&]() {
+                    PlayerRelocationNotifier relocate(*this);
+                    Cell::VisitAllObjects(viewPoint, relocate, GetMap()->GetVisibilityRange(), false);
+                    relocate.SendToSelf();
+                },
+                [&](uint64 diff) {
+                    LogEpochLaunchEntry(HighPlayerRelocationDiff
+                        {
+                            .player{GetEpochLaunchPlayerData(this)},
+                            .diff{static_cast<uint8>(std::min(diff, 256ull))}
+                        });
+                });
         }
+
+        m_lastNotifiedTime = m_lastTickTime;
+        m_lastNotifiedPosition = GetPosition();
+
+        ResetAllNotifies();
     }
-}
-
-void Player::ProcessVisibilityNotifier()
-{
-    ZoneScopedN("PlayerRelocationNotifier");
-
-    PlayerRelocationNotifier relocate(*this);
-    Cell::VisitAllObjects(viewPoint, relocate, GetMap()->GetVisibilityRange(), false);
-    relocate.SendToSelf();
-
-    m_lastNotifiedTime = m_lastTickTime;
-    m_lastNotifiedPosition = GetPosition();
 }
 
 void Player::setDeathState(DeathState s)
