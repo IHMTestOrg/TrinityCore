@@ -953,7 +953,7 @@ void Map::Update(uint32 t_diff)
         }
     }
 
-    if (sWorld->getBoolConfig(CONFIG_ALWAYS_UPDATE_WAYPOINT_CREATURES))
+    if (HavePlayers() && sWorld->getBoolConfig(CONFIG_ALWAYS_UPDATE_WAYPOINT_CREATURES))
     {
         ZoneScopedN("Map::Update::WaypointCreatures")
 
@@ -963,17 +963,17 @@ void Map::Update(uint32 t_diff)
             if (!creature || !creature->IsInWorld() || !creature->IsPositionValid())
                 continue;
 
-            CellCoord cellCoord = creature->GetCell().GetCellCoord();
-            // The waypoint creature has already ticked its update from the above if the cell its in is marked
-            if (isCellMarked(cellCoord.GetId()))
-                continue;
-
             {
                 ZoneScopedN("Map::Update::WaypointCreatures::WaypointCreature")
 
                 // Formation leaders tick their members
                 auto formation = creature->GetFormation();
-                if (formation && creature->IsFormationLeader())
+                // Update the creature if it is not in a formation
+                if (!formation)
+                {
+                    creature->Update(t_diff);
+                }
+                else if (creature->IsFormationLeader())
                 {
                     // Members can remove themselves and others from the formation during the tick,
                     // so we need to copy the members to handle both cases
@@ -984,21 +984,13 @@ void Map::Update(uint32 t_diff)
                             members.push_back(itr->first);
                     }
 
-                    // Tick all members even if removed, but not if they have already ticked
-                    // (edge condition where members are on diff grid than leader)
                     for (Creature* member : members)
                     {
-                        CellCoord memberCellCoord = member->GetCell().GetCellCoord();
-                        if (isCellMarked(memberCellCoord.GetId()))
+                        if (!member || !member->IsInWorld() || !member->IsPositionValid())
                             continue;
 
                         member->Update(t_diff);
-                    }
-                }
-                // Update the creature if it is not in a formation
-                else if (!formation)
-                {
-                    creature->Update(t_diff);
+                    } 
                 }
             }
         }
