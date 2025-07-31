@@ -1431,14 +1431,10 @@ void Player::Update(uint32 p_time)
         AddToNotify(NOTIFY_VISIBILITY_CHANGED);
     }
 
-    // Don't notify too soon
-    uint32 timeSinceLastNotify = m_lastTickTime - m_lastNotifiedTime;
+    // We now need a notify, but we ant to avoid clustering of notifies,
+    // so we find a 'slot' based on the dynamic period where this particular
+    // unit should perform its notify.
     uint32 period = GetMap()->GetVisibilityNotifyPeriod();
-    if (timeSinceLastNotify < period)
-        return;
-
-    // Get the time offset for the notify period and a guid offset
-    // to distribute notify times.
     uint32 currentOffset = m_lastTickTime % period;
     uint32 lastOffset = (m_lastTickTime - p_time) % period;
     uint32 guidOffset = GetGUID().GetCounter() % period;

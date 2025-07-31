@@ -399,6 +399,7 @@ class TC_GAME_API Map : public GridRefManager<NGridType>
         
         //function for setting up visibility distance for maps on per-type/per-Id basis
         virtual void InitVisibilityDistance();
+        void InitVisibilityDistanceThresholds();
 
         void PlayerRelocation(Player*, float x, float y, float z, float orientation);
         void CreatureRelocation(Creature* creature, float x, float y, float z, float orientation);
@@ -764,7 +765,11 @@ class TC_GAME_API Map : public GridRefManager<NGridType>
         Trinity::unique_weak_ptr<Map> m_weakRef;
         uint32 m_unloadTimer;
         float m_VisibleDistance;
+        float m_VisibleDistanceMax;
+        float m_VisibleDistanceMin;
         int32 m_VisibilityNotifyPeriod;
+        int32 m_VisibilityNotifyPeriodMax;
+        int32 m_VisibilityNotifyPeriodMin;
         DynamicMapTree _dynamicTree;
 
         MapRefManager m_mapRefManager;

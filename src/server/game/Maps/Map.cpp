@@ -74,6 +74,7 @@ static uint16 const holetab_v[4] = { 0x000F, 0x00F0, 0x0F00, 0xF000 };
 
 #define MAX_GRID_LOAD_TIME      50
 #define MAX_CREATURE_ATTACK_RADIUS  (45.0f * sWorld->getRate(RATE_CREATURE_AGGRO))
+#define MAX_DIFF_THRESHOLD 150
 
 ZoneDynamicInfo::ZoneDynamicInfo() : MusicId(0), DefaultWeather(nullptr), WeatherId(WEATHER_STATE_FINE),
     Intensity(0.0f) { }
@@ -246,8 +247,7 @@ void Map::LoadAllCells()
 
 Map::Map(uint32 id, uint32 instanceOrPartitionId):
 i_mapEntry(sMapStore.LookupEntry(id)),
-m_unloadTimer(0), m_VisibleDistance(DEFAULT_VISIBILITY_DISTANCE),
-m_VisibilityNotifyPeriod(DEFAULT_VISIBILITY_NOTIFY_PERIOD),
+m_unloadTimer(0),
 m_activeNonPlayersIter(m_activeNonPlayers.end()), _transportsUpdateIter(_transports.end()),
 m_updatingWaypointCreatures(false), i_scriptLock(false),
 _respawnTimes(std::make_unique<RespawnListContainer>())
@@ -291,6 +291,15 @@ void Map::InitVisibilityDistance()
     //init visibility for continents
     m_VisibleDistance = World::GetMaxVisibleDistanceOnContinents();
     m_VisibilityNotifyPeriod = World::GetVisibilityNotifyPeriodOnContinents();
+    InitVisibilityDistanceThresholds();
+}
+
+void Map::InitVisibilityDistanceThresholds()
+{
+    m_VisibleDistanceMax = m_VisibleDistance;
+    m_VisibleDistanceMin = m_VisibleDistanceMax * 0.5f;
+    m_VisibilityNotifyPeriodMin = m_VisibilityNotifyPeriod;
+    m_VisibilityNotifyPeriodMax = m_VisibilityNotifyPeriodMin * 2;
 }
 
 // Template specialization of utility methods
@@ -774,6 +783,15 @@ void Map::UpdatePlayerZoneStats(uint32 oldZone, uint32 newZone)
 // @tswow-begin tracy
 void Map::Update(uint32 t_diff)
 {
+    // Dynamically adjust notifies based on diff
+    if (t_diff > MAX_DIFF_THRESHOLD) {
+        m_VisibleDistance = std::max(m_VisibleDistance - 1.0f, m_VisibleDistanceMin);
+        m_VisibilityNotifyPeriod = std::min(m_VisibilityNotifyPeriod + 1, m_VisibilityNotifyPeriodMax);
+    } else {
+        m_VisibleDistance = std::min(m_VisibleDistance + 1.0f, m_VisibleDistanceMax);
+        m_VisibilityNotifyPeriod = std::max(m_VisibilityNotifyPeriod - 1, m_VisibilityNotifyPeriodMin);
+    }
+
     // @tswow-begin tswow-events
     {
         ZoneScopedNC("TSMap::Tick", MAP_UPDATE_COLOR)
@@ -3749,6 +3767,7 @@ void InstanceMap::InitVisibilityDistance()
     //init visibility distance for instances
     m_VisibleDistance = World::GetMaxVisibleDistanceInInstances();
     m_VisibilityNotifyPeriod = World::GetVisibilityNotifyPeriodInInstances();
+    InitVisibilityDistanceThresholds();
 }
 
 /*
@@ -4271,6 +4290,7 @@ void BattlegroundMap::InitVisibilityDistance()
     //init visibility distance for BG/Arenas
     m_VisibleDistance        = IsBattleArena() ? World::GetMaxVisibleDistanceInArenas() : World::GetMaxVisibleDistanceInBG();
     m_VisibilityNotifyPeriod = IsBattleArena() ? World::GetVisibilityNotifyPeriodInArenas() : World::GetVisibilityNotifyPeriodInBG();
+    InitVisibilityDistanceThresholds();
 }
 
 Map::EnterState BattlegroundMap::CannotEnter(Player* player)
