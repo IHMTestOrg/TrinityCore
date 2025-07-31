@@ -1418,22 +1418,35 @@ void Player::Update(uint32 p_time)
         return;
     }
 
+    // Player must move some consequential distance to need notify
+    if (!isNeedNotify(NOTIFY_VISIBILITY_CHANGED))
+    {
+        float dx = m_lastNotifiedPosition.GetPositionX() - GetPositionX();
+        float dy = m_lastNotifiedPosition.GetPositionY() - GetPositionY();
+        float dz = m_lastNotifiedPosition.GetPositionZ() - GetPositionZ();
+        float distsq = dx * dx + dy * dy + dz * dz;
+        if (distsq < 9)
+            return;
+            
+        AddToNotify(NOTIFY_VISIBILITY_CHANGED);
+    }
+
+    // Don't notify too soon
     uint32 timeSinceLastNotify = m_lastTickTime - m_lastNotifiedTime;
     uint32 period = GetMap()->GetVisibilityNotifyPeriod();
-    uint32 maxPeriod = period * 2;
     if (timeSinceLastNotify < period)
         return;
 
     // Get the time offset for the notify period and a guid offset
     // to distribute notify times.
     uint32 currentOffset = m_lastTickTime % period;
-    uint32 lastOffset = (m_lastTickTime - p_time) % period;
+    uint32 lastOffset = (m_lastTickTime - diff) % period;
     uint32 guidOffset = GetGUID().GetCounter() % period;
     // Check if guidOffset was crossed during this frame
     bool crossed = (lastOffset < currentOffset) ?
         (guidOffset > lastOffset && guidOffset <= currentOffset) :
         (guidOffset > lastOffset || guidOffset <= currentOffset);
-    if (crossed || timeSinceLastNotify > maxPeriod)
+    if (crossed)
     {
         WorldObject const* viewPoint = m_seer;
         if (this == viewPoint || viewPoint->IsPositionValid())
@@ -1444,10 +1457,8 @@ void Player::Update(uint32 p_time)
             Cell::VisitAllObjects(viewPoint, relocate, GetMap()->GetVisibilityRange(), false);
             relocate.SendToSelf();
         }
-
         m_lastNotifiedTime = m_lastTickTime;
         m_lastNotifiedPosition = GetPosition();
-
         ResetAllNotifies();
     }
 }

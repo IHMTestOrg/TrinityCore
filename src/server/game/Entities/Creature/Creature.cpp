@@ -1115,17 +1115,23 @@ void Creature::Update(uint32 diff)
     if (!GetMap()->HavePlayers())
         return;
 
+    // Creature must move some consequential distance to need notify
+    if (!isNeedNotify(NOTIFY_VISIBILITY_CHANGED))
+    {
+        float dx = m_lastNotifiedPosition.GetPositionX() - GetPositionX();
+        float dy = m_lastNotifiedPosition.GetPositionY() - GetPositionY();
+        float dz = m_lastNotifiedPosition.GetPositionZ() - GetPositionZ();
+        float distsq = dx * dx + dy * dy + dz * dz;
+        if (distsq < 9)
+            return;
+            
+        AddToNotify(NOTIFY_VISIBILITY_CHANGED);
+    }
+
+    // Don't notify too soon
     uint32 timeSinceLastNotify = m_lastTickTime - m_lastNotifiedTime;
     uint32 period = GetMap()->GetVisibilityNotifyPeriod();
-    uint32 maxPeriod = period * 2;
     if (timeSinceLastNotify < period)
-        return;
-
-    float dx = m_lastNotifiedPosition.GetPositionX() - GetPositionX();
-    float dy = m_lastNotifiedPosition.GetPositionY() - GetPositionY();
-    float dz = m_lastNotifiedPosition.GetPositionZ() - GetPositionZ();
-    float distsq = dx * dx + dy * dy + dz * dz;
-    if (distsq < 64)
         return;
 
     // Get the time offset for the notify period and a guid offset
@@ -1137,15 +1143,14 @@ void Creature::Update(uint32 diff)
     bool crossed = (lastOffset < currentOffset) ?
         (guidOffset > lastOffset && guidOffset <= currentOffset) :
         (guidOffset > lastOffset || guidOffset <= currentOffset);
-    if (crossed || timeSinceLastNotify > maxPeriod)
+    if (crossed)
     {
         ZoneScopedN("CreatureRelocationNotifier");
+
         CreatureRelocationNotifier relocate(*this);
         Cell::VisitAllObjects(this, relocate, GetMap()->GetVisibilityRange(), false);
-
         m_lastNotifiedTime = m_lastTickTime;
         m_lastNotifiedPosition = GetPosition();
-
         ResetAllNotifies();
     }
 }

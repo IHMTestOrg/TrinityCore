@@ -1028,7 +1028,7 @@ void Map::Update(uint32 t_diff)
                 AddToGrid(creature, new_cell);
             }
             creature->UpdatePositionData();
-            creature->UpdateObjectVisibility(false);
+            //creature->UpdateObjectVisibility(false);
 
             if (creature->ShouldRelocateUpdateMapPartition())
                 _updateMapPartitionCreatures.insert(creature);
@@ -1297,7 +1297,7 @@ void Map::PlayerRelocation(Player* player, float x, float y, float z, float orie
     }
 
     player->UpdatePositionData();
-    player->UpdateObjectVisibility(false);
+    //player->UpdateObjectVisibility(false);
 
     if (player->ShouldRelocateUpdateMapPartition())
         _updateMapPartitionPlayers.insert(player);
@@ -1318,7 +1318,7 @@ void Map::CreatureRelocation(Creature* creature, float x, float y, float z, floa
     else
     {
         creature->UpdatePositionData();
-        creature->UpdateObjectVisibility(false);
+        //creature->UpdateObjectVisibility(false);
 
         if (creature->ShouldRelocateUpdateMapPartition())
             _updateMapPartitionCreatures.insert(creature);
