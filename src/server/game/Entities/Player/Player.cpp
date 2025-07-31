@@ -1440,7 +1440,7 @@ void Player::Update(uint32 p_time)
     // Get the time offset for the notify period and a guid offset
     // to distribute notify times.
     uint32 currentOffset = m_lastTickTime % period;
-    uint32 lastOffset = (m_lastTickTime - diff) % period;
+    uint32 lastOffset = (m_lastTickTime - p_time) % period;
     uint32 guidOffset = GetGUID().GetCounter() % period;
     // Check if guidOffset was crossed during this frame
     bool crossed = (lastOffset < currentOffset) ?
