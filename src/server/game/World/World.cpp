@@ -3288,25 +3288,8 @@ void World::UpdateSessions(uint32 diff)
             TC_METRIC_TAG("parent_type", "Update sessions"));
         ///- Add new sessions
         WorldSession* sess = nullptr;
-        std::set<uint32> accounts;
-        uint32 count = 0;
         while (addSessQueue.next(sess))
-        {
-            if (accounts.contains(sess->GetAccountId()))
-            {
-                TC_LOG_ERROR("dupe", "DUPLICATE ACCOUNT ID IN ADDSESSQUEUE {}", sess->GetAccountId());
-            }
-            else
-            {
-                accounts.insert(sess->GetAccountId());
-                AddSession_(sess);
-            }
-            // Test this after
-            // For now break early
-            if (++count >= 5)
-                break;
-        }
-        accounts.clear();
+            AddSession_(sess);
     }
 
     ///- Then send an update signal to remaining ones
