@@ -3294,7 +3294,7 @@ void World::UpdateSessions(uint32 diff)
         uint32 count = 0;
         while (addSessQueue.next(sess))
         {
-            if (accounts.contains(sess->GetAccountId())
+            if (accounts.contains(sess->GetAccountId()))
             {
                 TC_LOG_ERROR("dupe", "DUPLICATE ACCOUNT ID IN ADDSESSQUEUE {}", sess->GetAccountId());
             }
