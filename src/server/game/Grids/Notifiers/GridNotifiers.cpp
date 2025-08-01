@@ -26,7 +26,6 @@
 // @tswow-begin
 #include "TSUnit.h"
 #include "TSCreature.h"
-#include "Tracy.hpp"
 // @tswow-end
 
 using namespace Trinity;

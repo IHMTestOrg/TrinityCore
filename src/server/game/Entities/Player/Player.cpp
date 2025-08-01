@@ -122,8 +122,6 @@
 #include "TSItem.h"
 #include "TSGameObject.h"
 #include "TSCorpse.h"
-#include "EpochLaunchLog.hpp"
-#include "TSGlobal.h"
 // @tswow-end
 // @epoch-begin
 #include "AnticheatMgr.h"

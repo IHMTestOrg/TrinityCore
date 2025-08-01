@@ -24,7 +24,6 @@
 #include "TSLua.h"
 #include "TSProfile.h"
 #include "TSScriptMgrEvents.h"
-#include "EpochLaunchLog.hpp"
 // @tswow-end
 #include "World.h"
 #include "AccountMgr.h"
@@ -2495,7 +2494,6 @@ void World::LoadAutobroadcasts()
 void World::Update(uint32 diff)
 {
     ZoneScopedC(WORLD_UPDATE_COLOR)
-    WriteEpochLaunchLog();
     clear_lua_garbage();
     TC_METRIC_TIMER("world_update_time_total");
     ///- Update the game time and check for shutdown time
