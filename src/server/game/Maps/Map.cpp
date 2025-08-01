@@ -74,6 +74,7 @@ static uint16 const holetab_v[4] = { 0x000F, 0x00F0, 0x0F00, 0xF000 };
 
 #define MAX_GRID_LOAD_TIME      50
 #define MAX_CREATURE_ATTACK_RADIUS  (45.0f * sWorld->getRate(RATE_CREATURE_AGGRO))
+#define MAX_DIFF_THRESHOLD 150
 
 ZoneDynamicInfo::ZoneDynamicInfo() : MusicId(0), DefaultWeather(nullptr), WeatherId(WEATHER_STATE_FINE),
     Intensity(0.0f) { }
@@ -246,10 +247,10 @@ void Map::LoadAllCells()
 
 Map::Map(uint32 id, uint32 instanceOrPartitionId):
 i_mapEntry(sMapStore.LookupEntry(id)),
-m_unloadTimer(0), m_VisibleDistance(DEFAULT_VISIBILITY_DISTANCE),
-m_VisibilityNotifyPeriod(DEFAULT_VISIBILITY_NOTIFY_PERIOD),
-m_activeNonPlayersIter(m_activeNonPlayers.end()), m_waypointCreaturesIter(m_waypointCreatures.end()), _transportsUpdateIter(_transports.end()),
-i_scriptLock(false), _respawnTimes(std::make_unique<RespawnListContainer>())
+m_unloadTimer(0),
+m_activeNonPlayersIter(m_activeNonPlayers.end()), _transportsUpdateIter(_transports.end()),
+m_updatingWaypointCreatures(false), i_scriptLock(false),
+_respawnTimes(std::make_unique<RespawnListContainer>())
 {
     for (unsigned int idx=0; idx < MAX_NUMBER_OF_GRIDS; ++idx)
     {
@@ -285,29 +286,20 @@ i_scriptLock(false), _respawnTimes(std::make_unique<RespawnListContainer>())
     MMAP::MMapFactory::createOrGetMMapManager()->loadMapInstance(sWorld->GetDataPath(), GetId(), instanceOrPartitionId);
 }
 
-float Map::GetDiffScaleFactor() const
-{
-    float baseLineDiff = 150.0f; // A normal diff for an active server
-    return std::min(std::max(sWorldUpdateTime.GetLastUpdateTime() / baseLineDiff, 1.0f), 6.0f); // Diff scale 1x->6x
-}
-
-float Map::GetVisibilityRange() const
-{
-    // Scale range from full down to half based on scaleFactor (1x->6x becomes 1.0->0.5)
-    float rangeScale = 1.0f - ((GetDiffScaleFactor() - 1.0f) / 10.0f);
-    return m_VisibleDistance * rangeScale;
-}
-
-float Map::GetVisibilityNotifyPeriod() const
-{
-    return m_VisibilityNotifyPeriod * GetDiffScaleFactor();
-}
-
 void Map::InitVisibilityDistance()
 {
     //init visibility for continents
     m_VisibleDistance = World::GetMaxVisibleDistanceOnContinents();
     m_VisibilityNotifyPeriod = World::GetVisibilityNotifyPeriodOnContinents();
+    InitVisibilityDistanceThresholds();
+}
+
+void Map::InitVisibilityDistanceThresholds()
+{
+    m_VisibleDistanceMax = m_VisibleDistance;
+    m_VisibleDistanceMin = m_VisibleDistanceMax * 0.5f;
+    m_VisibilityNotifyPeriodMin = m_VisibilityNotifyPeriod;
+    m_VisibilityNotifyPeriodMax = m_VisibilityNotifyPeriodMin * 2;
 }
 
 // Template specialization of utility methods
@@ -617,7 +609,6 @@ bool Map::AddToMap(T* obj)
     /// @todo Needs clean up. An object should not be added to map twice.
     if (obj->IsInWorld())
     {
-        TC_LOG_ERROR("maps", "Map::AddToMap called on Object that is already in world, map {}, obj {}", GetId(), obj->GetDebugInfo());
         ASSERT(obj->IsInGrid());
         obj->UpdateObjectVisibility(true);
         return true;
@@ -792,6 +783,15 @@ void Map::UpdatePlayerZoneStats(uint32 oldZone, uint32 newZone)
 // @tswow-begin tracy
 void Map::Update(uint32 t_diff)
 {
+    // Dynamically adjust notifies based on diff
+    if (t_diff > MAX_DIFF_THRESHOLD) {
+        m_VisibleDistance = std::max(m_VisibleDistance - 1.0f, m_VisibleDistanceMin);
+        m_VisibilityNotifyPeriod = std::min(m_VisibilityNotifyPeriod + 1, m_VisibilityNotifyPeriodMax);
+    } else {
+        m_VisibleDistance = std::min(m_VisibleDistance + 1.0f, m_VisibleDistanceMax);
+        m_VisibilityNotifyPeriod = std::max(m_VisibilityNotifyPeriod - 1, m_VisibilityNotifyPeriodMin);
+    }
+
     // @tswow-begin tswow-events
     {
         ZoneScopedNC("TSMap::Tick", MAP_UPDATE_COLOR)
@@ -953,24 +953,14 @@ void Map::Update(uint32 t_diff)
         }
     }
 
-    // TODO make this permanent
-    if (sWorld->getBoolConfig(CONFIG_ALWAYS_UPDATE_WAYPOINT_CREATURES))
+    if (HavePlayers() && sWorld->getBoolConfig(CONFIG_ALWAYS_UPDATE_WAYPOINT_CREATURES))
     {
         ZoneScopedN("Map::Update::WaypointCreatures")
 
-        // waypoint creatures, increasing iterator in the loop in case of object removal
-        // TODO should objects be removed during update? I thought they get put in move list
-        for (m_waypointCreaturesIter = m_waypointCreatures.begin(); m_waypointCreaturesIter != m_waypointCreatures.end();)
+        m_updatingWaypointCreatures = true;
+        for (auto creature : m_waypointCreatures)
         {
-            Creature* creature = *m_waypointCreaturesIter;
-            ++m_waypointCreaturesIter;
-
             if (!creature || !creature->IsInWorld() || !creature->IsPositionValid())
-                continue;
-
-            CellCoord cellCoord = creature->GetCell().GetCellCoord();
-            // The waypoint creature has already ticked its update from the above if the cell its in is marked
-            if (isCellMarked(cellCoord.GetId()))
                 continue;
 
             {
@@ -978,7 +968,12 @@ void Map::Update(uint32 t_diff)
 
                 // Formation leaders tick their members
                 auto formation = creature->GetFormation();
-                if (formation && creature->IsFormationLeader())
+                // Update the creature if it is not in a formation
+                if (!formation)
+                {
+                    creature->Update(t_diff);
+                }
+                else if (creature->IsFormationLeader())
                 {
                     // Members can remove themselves and others from the formation during the tick,
                     // so we need to copy the members to handle both cases
@@ -989,24 +984,25 @@ void Map::Update(uint32 t_diff)
                             members.push_back(itr->first);
                     }
 
-                    // Tick all members even if removed, but not if they have already ticked
-                    // (edge condition where members are on diff grid than leader)
                     for (Creature* member : members)
                     {
-                        CellCoord memberCellCoord = member->GetCell().GetCellCoord();
-                        if (isCellMarked(memberCellCoord.GetId()))
+                        if (!member || !member->IsInWorld() || !member->IsPositionValid())
                             continue;
 
                         member->Update(t_diff);
-                    }
-                }
-                // Update the creature if it is not in a formation
-                else if (!formation)
-                {
-                    creature->Update(t_diff);
+                    } 
                 }
             }
         }
+        m_updatingWaypointCreatures = false;
+    }
+
+    {
+        ZoneScopedN("Map::Update::AddWaypointCreatures")
+
+        for (auto creature : m_waypointCreaturesToAdd)
+            m_waypointCreatures.insert(creature);
+        m_waypointCreaturesToAdd.clear();
     }
 
     {
@@ -1042,7 +1038,7 @@ void Map::Update(uint32 t_diff)
                 AddToGrid(creature, new_cell);
             }
             creature->UpdatePositionData();
-            creature->UpdateObjectVisibility(false);
+            //creature->UpdateObjectVisibility(false);
 
             if (creature->ShouldRelocateUpdateMapPartition())
                 _updateMapPartitionCreatures.insert(creature);
@@ -1278,7 +1274,7 @@ void Map::RemoveFromPartition(T *obj)
     if (obj->isActiveObject())
         RemoveFromActive(obj);
 
-    if (obj->IsCreature() && obj->ToCreature()->GetWaypointPath() != 0)
+    if (obj->IsCreature())
         RemoveFromWaypointCreatures(obj->ToCreature());
 
     // note: RemoveFromWorld does this for inWorld objects
@@ -1311,7 +1307,7 @@ void Map::PlayerRelocation(Player* player, float x, float y, float z, float orie
     }
 
     player->UpdatePositionData();
-    player->UpdateObjectVisibility(false);
+    //player->UpdateObjectVisibility(false);
 
     if (player->ShouldRelocateUpdateMapPartition())
         _updateMapPartitionPlayers.insert(player);
@@ -1332,7 +1328,7 @@ void Map::CreatureRelocation(Creature* creature, float x, float y, float z, floa
     else
     {
         creature->UpdatePositionData();
-        creature->UpdateObjectVisibility(false);
+        //creature->UpdateObjectVisibility(false);
 
         if (creature->ShouldRelocateUpdateMapPartition())
             _updateMapPartitionCreatures.insert(creature);
@@ -3763,6 +3759,7 @@ void InstanceMap::InitVisibilityDistance()
     //init visibility distance for instances
     m_VisibleDistance = World::GetMaxVisibleDistanceInInstances();
     m_VisibilityNotifyPeriod = World::GetVisibilityNotifyPeriodInInstances();
+    InitVisibilityDistanceThresholds();
 }
 
 /*
@@ -4285,6 +4282,7 @@ void BattlegroundMap::InitVisibilityDistance()
     //init visibility distance for BG/Arenas
     m_VisibleDistance        = IsBattleArena() ? World::GetMaxVisibleDistanceInArenas() : World::GetMaxVisibleDistanceInBG();
     m_VisibilityNotifyPeriod = IsBattleArena() ? World::GetVisibilityNotifyPeriodInArenas() : World::GetVisibilityNotifyPeriodInBG();
+    InitVisibilityDistanceThresholds();
 }
 
 Map::EnterState BattlegroundMap::CannotEnter(Player* player)

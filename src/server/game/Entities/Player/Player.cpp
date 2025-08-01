@@ -1057,8 +1057,6 @@ void Player::Update(uint32 p_time)
     if (!IsInWorld())
         return;
 
-    ZoneScopedN("Player::Update")
-
     // undelivered mail
     if (m_nextMailDelivereTime && m_nextMailDelivereTime <= GameTime::GetGameTime())
     {
@@ -1415,14 +1413,31 @@ void Player::Update(uint32 p_time)
     }
 
     if (IsHasDelayedTeleport())
+    {
         TeleportTo(m_teleport_dest, m_teleport_options);
+        return;
+    }
 
-    // For now, do this at the end of the update 
-    uint32 scaledPeriod = GetMap()->GetVisibilityNotifyPeriod();
-    uint32 currentTime = GameTime::GetGameTimeMS();
-    uint32 currentOffset = currentTime % scaledPeriod;
-    uint32 lastOffset = (currentTime - p_time) % scaledPeriod;
-    uint32 guidOffset = GetGUID().GetCounter() % scaledPeriod;
+    // Player must move some consequential distance to need notify
+    if (!isNeedNotify(NOTIFY_VISIBILITY_CHANGED))
+    {
+        float dx = m_lastNotifiedPosition.GetPositionX() - GetPositionX();
+        float dy = m_lastNotifiedPosition.GetPositionY() - GetPositionY();
+        float dz = m_lastNotifiedPosition.GetPositionZ() - GetPositionZ();
+        float distsq = dx * dx + dy * dy + dz * dz;
+        if (distsq < 9)
+            return;
+            
+        AddToNotify(NOTIFY_VISIBILITY_CHANGED);
+    }
+
+    // We now need a notify, but we ant to avoid clustering of notifies,
+    // so we find a 'slot' based on the dynamic period where this particular
+    // unit should perform its notify.
+    uint32 period = GetMap()->GetVisibilityNotifyPeriod();
+    uint32 currentOffset = m_lastTickTime % period;
+    uint32 lastOffset = (m_lastTickTime - p_time) % period;
+    uint32 guidOffset = GetGUID().GetCounter() % period;
     // Check if guidOffset was crossed during this frame
     bool crossed = (lastOffset < currentOffset) ?
         (guidOffset > lastOffset && guidOffset <= currentOffset) :
@@ -1430,24 +1445,16 @@ void Player::Update(uint32 p_time)
     if (crossed)
     {
         WorldObject const* viewPoint = m_seer;
-        if (viewPoint->isNeedNotify(NOTIFY_VISIBILITY_CHANGED) && (this == viewPoint || viewPoint->IsPositionValid()))
+        if (this == viewPoint || viewPoint->IsPositionValid())
         {
-            ZoneScopedN("Player::Update::RelocationNotifier");
-            OnSlowerThan(5,
-                [&]() {
-                    PlayerRelocationNotifier relocate(*this);
-                    Cell::VisitAllObjects(viewPoint, relocate, GetMap()->GetVisibilityRange(), false);
-                    relocate.SendToSelf();
-                },
-                [&](uint64 diff) {
-                    LogEpochLaunchEntry(HighPlayerRelocationDiff
-                        {
-                            .player{GetEpochLaunchPlayerData(this)},
-                            .diff{static_cast<uint8>(std::min(diff, 256ull))}
-                        });
-                });
-        }
+            ZoneScopedN("PlayerRelocationNotifier");
 
+            PlayerRelocationNotifier relocate(*this);
+            Cell::VisitAllObjects(viewPoint, relocate, GetMap()->GetVisibilityRange(), false);
+            relocate.SendToSelf();
+        }
+        m_lastNotifiedTime = m_lastTickTime;
+        m_lastNotifiedPosition = GetPosition();
         ResetAllNotifies();
     }
 }
