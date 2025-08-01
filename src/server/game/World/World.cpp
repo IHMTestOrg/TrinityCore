@@ -3305,8 +3305,8 @@ void World::UpdateSessions(uint32 diff)
             }
             // Test this after
             // For now break early
-            if (++count >= 5)
-                break;
+            //if (++count >= 10)
+            //    break;
         }
         accounts.clear();
     }
