@@ -15,6 +15,7 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "Defines.h"
 #include "ScriptMgr.h"
 #include "AccountMgr.h"
 #include "ArenaTeamMgr.h"
@@ -51,6 +52,8 @@
 #include "WeatherMgr.h"
 #include "World.h"
 #include "WorldSession.h"
+#include "QueryCallback.h"
+#include <unordered_map>
 
 // temporary hack until includes are sorted out (don't want to pull in Windows.h)
 #ifdef GetClassName
@@ -125,6 +128,7 @@ public:
             { "unstuck",          HandleUnstuckCommand,          rbac::RBAC_PERM_COMMAND_UNSTUCK,          Console::Yes },
             { "wchange",          HandleChangeWeather,           rbac::RBAC_PERM_COMMAND_WCHANGE,          Console::No },
             { "mailbox",          HandleMailBoxCommand,          rbac::RBAC_PERM_COMMAND_MAILBOX,          Console::No },
+            { "async_log",        HandleAsyncLogCommand,         rbac::RBAC_PERM_COMMAND_ASYNC_LOG,        Console::Yes },
         };
         return commandTable;
     }
@@ -2664,6 +2668,36 @@ public:
 
         handler->GetSession()->SendShowMailBox(player->GetGUID());
         return true;
+    }
+
+    static bool HandleAsyncLogCommand(ChatHandler* handler) {
+        std::unordered_map<uint64, QueryCallbackLogData> logData = GetLogData();
+        /*
+        struct QueryCallbackLogData {
+            std::string query;
+            uint64 createTime;
+        };
+        */
+        std::unordered_map<std::string, uint64> counts;
+        for (auto const& [key, entry] : logData) {
+            counts[entry.query]++;
+        }
+        struct CountEntry {
+            std::string name;
+            uint64 count;
+        };
+        std::vector<CountEntry> countVV;
+        for (auto const& [key, entry] : counts) {
+            countVV.push_back(CountEntry{key, entry});
+        }
+        std::sort(countVV.begin(), countVV.end(),
+                  [](CountEntry const& a, CountEntry const& b) {
+                      return a.count > b.count ? 1 : -1;
+                      1;
+                  });
+        for (CountEntry const& entry : countVV) {
+            handler->PSendSysMessage("{}: {}", entry.name, entry.count);
+        }
     }
 };
 

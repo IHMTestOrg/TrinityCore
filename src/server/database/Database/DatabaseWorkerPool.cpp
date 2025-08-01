@@ -158,6 +158,12 @@ bool DatabaseWorkerPool<T>::PrepareStatements()
             if (_preparedStatementSize.size() < preparedSize)
                 _preparedStatementSize.resize(preparedSize);
 
+            if (_preparedStatementNames.size() < preparedSize) {
+                _preparedStatementNames.reserve(preparedSize);
+                for (size_t i = 0; i < preparedSize; ++i) {
+                    _preparedStatementNames.push_back(std::make_unique<std::string>());
+                }
+            }
             for (size_t i = 0; i < preparedSize; ++i)
             {
                 // already set by another connection
@@ -173,6 +179,7 @@ bool DatabaseWorkerPool<T>::PrepareStatements()
                     ASSERT(paramCount < std::numeric_limits<uint8>::max());
 
                     _preparedStatementSize[i] = static_cast<uint8>(paramCount);
+                    _preparedStatementNames[i] = std::make_unique<std::string>(stmt->m_queryString);
                 }
             }
         }
@@ -224,7 +231,7 @@ QueryCallback DatabaseWorkerPool<T>::AsyncQuery(char const* sql)
     // Store future result before enqueueing - task might get already processed and deleted before returning from this method
     QueryResultFuture result = task->GetFuture();
     Enqueue(task);
-    return QueryCallback(std::move(result));
+    return QueryCallback(std::move(result), sql);
 }
 
 template <class T>
@@ -234,7 +241,7 @@ QueryCallback DatabaseWorkerPool<T>::AsyncQuery(PreparedStatement<T>* stmt)
     // Store future result before enqueueing - task might get already processed and deleted before returning from this method
     PreparedQueryResultFuture result = task->GetFuture();
     Enqueue(task);
-    return QueryCallback(std::move(result));
+    return QueryCallback(std::move(result), stmt->m_name);
 }
 
 template <class T>
@@ -335,7 +342,7 @@ void DatabaseWorkerPool<T>::DirectCommitTransaction(SQLTransaction<T>& transacti
 template <class T>
 PreparedStatement<T>* DatabaseWorkerPool<T>::GetPreparedStatement(PreparedStatementIndex index)
 {
-    return new PreparedStatement<T>(index, _preparedStatementSize[index]);
+    return new PreparedStatement<T>(index, _preparedStatementSize[index], *_preparedStatementNames[index]);
 }
 
 template <class T>

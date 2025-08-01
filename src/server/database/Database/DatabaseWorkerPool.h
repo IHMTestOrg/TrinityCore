@@ -24,6 +24,7 @@
 #include <array>
 #include <string>
 #include <vector>
+#include <memory>
 // @tswow-begin
 #include <map>
 // @tswow-end
@@ -245,6 +246,7 @@ class DatabaseWorkerPool
         std::array<std::vector<std::unique_ptr<T>>, IDX_SIZE> _connections;
         std::unique_ptr<MySQLConnectionInfo> _connectionInfo;
         std::vector<uint8> _preparedStatementSize;
+        std::vector<std::unique_ptr<std::string>> _preparedStatementNames;
         uint8 _async_threads, _synch_threads;
 #ifdef TRINITY_DEBUG
         static inline thread_local bool _warnSyncQueries = false;
